@@ -1,27 +1,32 @@
 ﻿using UnityEngine;
-using UnityEngine.Animations;
 
 public class PlayerController : MonoBehaviour
 {
     #region 인스펙터
+    [Header("이동 속도")]
     [SerializeField] private float _moveSpeed = 5f;
+
+    [Header("3인칭 카메라")]
+    [SerializeField] private ThirdPersonCamera _cameraController;
+
+    [Header("무기")]
+    [SerializeField] private Weapon _weapon;
     #endregion
 
     #region 내부 변수
     private CharacterController _characterController;
-    private Camera _camera;
     #endregion
 
     private void Awake()
     {
         _characterController = GetComponent<CharacterController>();
-        _camera = Camera.main;
     }
 
     private void Update()
     {
         Move();
         Aim();
+        Shoot();
     }
 
     private void Move()
@@ -29,28 +34,36 @@ public class PlayerController : MonoBehaviour
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
 
-        Vector3 moveDir = new Vector3(horizontal, 0f, vertical).normalized;
+        Vector3 moveDir = _cameraController.GetRight() * horizontal + _cameraController.GetForward() * vertical;
+
+        moveDir.Normalize();
 
         _characterController.Move(moveDir * _moveSpeed * Time.deltaTime);
     }
 
     private void Aim()
     {
-        Ray ray = _camera.ScreenPointToRay(Input.mousePosition);
-
-        Plane groundPlane = new Plane(Vector3.up, transform.position);
-
-        if (groundPlane.Raycast(ray, out float distance))
+        if (!Input.GetMouseButton(1))
         {
-            Vector3 aimPos = ray.GetPoint(distance);
+            return;
+        }
 
-            Vector3 lookDir = aimPos - transform.position;
-            lookDir.y = 0f;
+        Vector3 lookDir = _cameraController.GetForward();
 
-            if (lookDir != Vector3.zero)
-            {
-                transform.rotation = Quaternion.LookRotation(lookDir);
-            }
+        if (lookDir != Vector3.zero)
+        {
+            transform.rotation = Quaternion.LookRotation(lookDir);
         }
     }
+
+    private void Shoot()
+    {
+        if (!Input.GetMouseButton(0))
+        {
+            return;
+        }
+
+        _weapon.Fire();
+    }
+
 }
