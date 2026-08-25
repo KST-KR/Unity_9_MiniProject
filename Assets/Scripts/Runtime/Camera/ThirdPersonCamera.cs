@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 [DefaultExecutionOrder(-100)]
 public class ThirdPersonCamera : MonoBehaviour
@@ -22,6 +21,10 @@ public class ThirdPersonCamera : MonoBehaviour
     [Header("에임 레이캐스트")]
     [SerializeField] private LayerMask _aimRaycastMask = ~0;
     [SerializeField] private float _aimRaycastDistance = 500f;
+
+    [Header("카메라 반동")]
+    [SerializeField] private float _recoilSpeed = 15f;
+    [SerializeField] private float _recoilReturnSpeed = 10f;
     #endregion
 
     #region 내부 변수
@@ -29,6 +32,8 @@ public class ThirdPersonCamera : MonoBehaviour
 
     private float _yaw;
     private float _pitch;
+    private float _recoilPitch;
+    private float _targetRecoilPitch;
 
     public bool IsAiming { get; private set; }
     #endregion
@@ -51,7 +56,9 @@ public class ThirdPersonCamera : MonoBehaviour
     private void Update()
     {
         IsAiming = Input.GetMouseButton(1);
+
         Rotate();
+        UpdateRecoil();
     }
 
     private void LateUpdate()
@@ -77,7 +84,7 @@ public class ThirdPersonCamera : MonoBehaviour
 
     private void UpdateCameraPosition()
     {
-        Quaternion rot = Quaternion.Euler(_pitch, _yaw, 0f);
+        Quaternion rot = Quaternion.Euler(_pitch + _recoilPitch, _yaw, 0f);
         Vector3 offset = IsAiming ? _aimOffset : _normalOffset;
 
         _camera.transform.position = _target.position + rot * offset;
@@ -114,4 +121,15 @@ public class ThirdPersonCamera : MonoBehaviour
         return ray.GetPoint(_aimRaycastDistance);
     }
 
+    public void AddRecoil(float amount)
+    {
+        _targetRecoilPitch -= amount;
+    }
+
+    private void UpdateRecoil()
+    {
+        _recoilPitch = Mathf.MoveTowards(_recoilPitch, _targetRecoilPitch, _recoilSpeed * Time.deltaTime);
+
+        _targetRecoilPitch = Mathf.MoveTowards(_targetRecoilPitch, 0f, _recoilReturnSpeed * Time.deltaTime);
+    }
 }

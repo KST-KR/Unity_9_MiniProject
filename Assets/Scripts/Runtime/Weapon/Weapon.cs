@@ -28,6 +28,16 @@ public class Weapon : MonoBehaviour
     [SerializeField] private float _recoilAngle = 5f;
     [SerializeField] private float _recoilSpeed = 15f;
     [SerializeField] private float _returnSpeed = 20f;
+    [SerializeField] private float _cameraRecoilAmount = 1f;
+
+    [Header("UI")]
+    [SerializeField] private Sprite _weaponIcon;
+
+    [Header("총구 화염")]
+    [SerializeField] private ParticleSystem _muzzleFlash;
+
+    [Header("왼손 IK")]
+    [SerializeField] private Transform _leftHandTarget;
     #endregion
 
     #region 내부 변수
@@ -40,7 +50,20 @@ public class Weapon : MonoBehaviour
     private Quaternion _targetLocalRotation;
     #endregion
 
+    #region 프로퍼티
     public WeaponType Type => _weaponType;
+    public int CurrentAmmo => _currentAmmo;
+    public int MagazineSize => _magazineSize;
+    public Sprite WeaponIcon => _weaponIcon;
+    public bool IsReloading => _isReloading;
+    public Transform LeftHandTarget => _leftHandTarget;
+    #endregion
+
+    #region 이벤트
+    public event System.Action<int, int> AmmoChanged;
+    public event System.Action ReloadStarted;
+    public event System.Action ReloadCompleted;
+    #endregion
 
     private void Awake()
     {
@@ -94,12 +117,18 @@ public class Weapon : MonoBehaviour
         _lastFireTime = Time.time;
         _currentAmmo--;
 
+        AmmoChanged?.Invoke(_currentAmmo, _magazineSize);
+
         bullet.transform.position = _firePoint.position;
         bullet.transform.rotation = Quaternion.LookRotation(fireDir);
 
         bullet.Initialize(fireDir, _bulletPool);
 
+        _muzzleFlash.Play();
+
         _targetLocalRotation = _initialLocalRotation * Quaternion.Euler(-_recoilAngle, 0f, 0f);
+
+        _cameraController.AddRecoil(_cameraRecoilAmount);
 
         return true;
     }
@@ -119,6 +148,8 @@ public class Weapon : MonoBehaviour
         _isReloading = true;
         _reloadEndTime = Time.time + _reloadTime;
 
+        ReloadStarted?.Invoke();
+
         return true;
     }
 
@@ -136,6 +167,9 @@ public class Weapon : MonoBehaviour
 
         _currentAmmo = _magazineSize;
         _isReloading = false;
+
+        AmmoChanged?.Invoke(_currentAmmo, _magazineSize);
+        ReloadCompleted?.Invoke();
     }
 
     private void UpdateRecoil()

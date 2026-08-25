@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -7,6 +6,14 @@ public class PlayerController : MonoBehaviour
     #region 인스펙터
     [Header("이동 속도")]
     [SerializeField] private float _moveSpeed = 5f;
+    [SerializeField] private float _runMultiPlier = 1.8f;
+
+    [Header("점프")]
+    [SerializeField] private float _jumpHeight = 2f;
+
+    [Header("중력")]
+    [SerializeField] private float _gravity = -9.81f;
+    [SerializeField] private float _groundStick = -2f;
 
     [Header("3인칭 카메라")]
     [SerializeField] private ThirdPersonCamera _cameraController;
@@ -16,26 +23,42 @@ public class PlayerController : MonoBehaviour
 
     [Header("애니메이터")]
     [SerializeField] private Animator _animator;
+
+    [Header("조준 리깅")]
+    [SerializeField] private WeaponAimRigController _weaponAimRigController;
     #endregion
 
     #region 내부 변수
     private string _paramSpeed = "Speed";
+    private string _paramRunning = "IsRunning";
+    private string _paramJump = "Jump";
     private string _paramAiming = "IsAiming";
     private string _paramShoot = "Shoot";
     private string _paramReload = "Reload";
     private string _paramWeaponType = "WeaponType";
+    private string _paramGrounded = "IsGrounded";
 
     private float _animationDamp = 0.1f;
+    private float _verticalVelocity;
 
     private int _hashSpeed;
+    private int _hashRunning;
+    private int _hashJump;
     private int _hashAiming;
     private int _hashShoot;
     private int _hashReload;
     private int _hashWeaponType;
-    private int _currentWeaponIndex;
+    private int _hashGrounded;
+    private int _currentWeaponIndex = 0;
 
     private CharacterController _characterController;
+
+    private Vector3 _moveVelocity;
     #endregion
+
+    public Weapon CurrentWeapon => _weapons[_currentWeaponIndex];
+
+    public event System.Action WeaponChanged;
 
     private void Awake()
     {
@@ -51,6 +74,9 @@ public class PlayerController : MonoBehaviour
         _hashShoot = Animator.StringToHash(_paramShoot);
         _hashReload = Animator.StringToHash(_paramReload);
         _hashWeaponType = Animator.StringToHash(_paramWeaponType);
+        _hashRunning = Animator.StringToHash(_paramRunning);
+        _hashJump = Animator.StringToHash(_paramJump);
+        _hashGrounded = Animator.StringToHash(_paramGrounded);
     }
 
     private void Start()
@@ -58,22 +84,48 @@ public class PlayerController : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
+        if (_weapons.Count == 0)
+        {
+            return;
+        }
+
         for (int i = 0; i < _weapons.Count; i++)
         {
             _weapons[i].gameObject.SetActive(i == _currentWeaponIndex);
         }
 
-        _animator.SetInteger(_hashWeaponType, (int)_weapons[_currentWeaponIndex].Type);
+        Weapon currentWeapon = CurrentWeapon;
+
+        _animator.SetInteger(_hashWeaponType, (int)currentWeapon.Type);
+
+        _weaponAimRigController.SetWeaponType(currentWeapon.Type);
+        _weaponAimRigController.SetLeftHandTarget(currentWeapon.LeftHandTarget);
+
+        currentWeapon.ReloadStarted += OnReloadStarted;
+        currentWeapon.ReloadCompleted += OnReloadCompleted;
     }
 
     private void Update()
     {
         Move();
+        JumpAndGravity();
+        ApplyMovement();
+
         Aim();
         SwitchWeapon();
         Shoot();
         Reload();
         UpdateAnimation();
+    }
+
+    private void OnReloadStarted()
+    {
+        _weaponAimRigController.SetReloading(true);
+    }
+
+    private void OnReloadCompleted()
+    {
+        _weaponAimRigController.SetReloading(false);
     }
 
     private void Move()
@@ -83,9 +135,48 @@ public class PlayerController : MonoBehaviour
 
         Vector3 moveDir = _cameraController.GetRight() * horizontal + _cameraController.GetForward() * vertical;
 
-        moveDir.Normalize();
+        moveDir = Vector3.ClampMagnitude(moveDir, 1f);
 
-        _characterController.Move(moveDir * _moveSpeed * Time.deltaTime);
+        bool isMoving = moveDir != Vector3.zero;
+
+        float currentSpeed = _moveSpeed;
+
+        if (isMoving && Input.GetKey(KeyCode.LeftShift))
+        {
+            currentSpeed *= _runMultiPlier;
+        }
+
+        _moveVelocity = moveDir * currentSpeed;
+    }
+
+    private void JumpAndGravity()
+    {
+        if (_characterController.isGrounded)
+        {
+            if (_verticalVelocity < 0f)
+            {
+                _verticalVelocity = _groundStick;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                _verticalVelocity = Mathf.Sqrt(_jumpHeight * -2f * _gravity);
+
+                _animator.SetTrigger(_hashJump);
+            }
+        }
+        else
+        {
+            _verticalVelocity += _gravity * Time.deltaTime;
+        }
+    }
+
+    private void ApplyMovement()
+    {
+        Vector3 velocity = _moveVelocity;
+        velocity.y = _verticalVelocity;
+
+        _characterController.Move(velocity * Time.deltaTime);
     }
 
     private void Aim()
@@ -113,6 +204,11 @@ public class PlayerController : MonoBehaviour
 
     private void ChangeWeapon(int index)
     {
+        if (_weapons[_currentWeaponIndex].IsReloading)
+        {
+            return;
+        }
+
         if (index < 0 || index >= _weapons.Count)
         {
             return;
@@ -123,6 +219,11 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        Weapon previousWeapon = CurrentWeapon;
+
+        previousWeapon.ReloadStarted -= OnReloadStarted;
+        previousWeapon.ReloadCompleted -= OnReloadCompleted;
+
         for (int i = 0; i < _weapons.Count; i++)
         {
             _weapons[i].gameObject.SetActive(i == index);
@@ -130,7 +231,17 @@ public class PlayerController : MonoBehaviour
 
         _currentWeaponIndex = index;
 
-        _animator.SetInteger(_hashWeaponType, (int)_weapons[_currentWeaponIndex].Type);
+        Weapon currentWeapon = CurrentWeapon;
+
+        currentWeapon.ReloadStarted += OnReloadStarted;
+        currentWeapon.ReloadCompleted += OnReloadCompleted;
+
+        _animator.SetInteger(_hashWeaponType, (int)currentWeapon.Type);
+
+        _weaponAimRigController.SetWeaponType(currentWeapon.Type);
+        _weaponAimRigController.SetLeftHandTarget(currentWeapon.LeftHandTarget);
+
+        WeaponChanged?.Invoke();
     }
 
     private void Shoot()
@@ -171,8 +282,13 @@ public class PlayerController : MonoBehaviour
 
         _animator.SetFloat(_hashSpeed, speed, _animationDamp, Time.deltaTime);
 
-        bool isAiming = Input.GetMouseButton(1);
+        bool isReloading = _weapons[_currentWeaponIndex].IsReloading;
+        bool isAiming = Input.GetMouseButton(1) && !isReloading;
+        bool isRunning = input != Vector3.zero && Input.GetKey(KeyCode.LeftShift);
+        bool isGrounded = _characterController.isGrounded;
 
         _animator.SetBool(_hashAiming, isAiming);
+        _animator.SetBool(_hashRunning, isRunning);
+        _animator.SetBool(_hashGrounded, isGrounded);
     }
 }
