@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+[DefaultExecutionOrder(-100)]
 public class ThirdPersonCamera : MonoBehaviour
 {
     #region 인스펙터
@@ -10,13 +11,17 @@ public class ThirdPersonCamera : MonoBehaviour
     [SerializeField] private Transform _target;
 
     [Header("일반 카메라")]
-    [SerializeField] private Vector3 _normaloffset = new Vector3(0f, 5f, -7f);
+    [SerializeField] private Vector3 _normalOffset = new Vector3(0f, 5f, -7f);
 
     [Header("조준 카메라")]
     [SerializeField] private Vector3 _aimOffset = new Vector3(0.8f, 2f, -3f);
 
     [Header("카메라 회전")]
     [SerializeField] private float _rotateSpeed = 5f;
+
+    [Header("에임 레이캐스트")]
+    [SerializeField] private LayerMask _aimRaycastMask = ~0;
+    [SerializeField] private float _aimRaycastDistance = 500f;
     #endregion
 
     #region 내부 변수
@@ -24,6 +29,8 @@ public class ThirdPersonCamera : MonoBehaviour
 
     private float _yaw;
     private float _pitch;
+
+    public bool IsAiming { get; private set; }
     #endregion
 
     private void Awake()
@@ -41,14 +48,18 @@ public class ThirdPersonCamera : MonoBehaviour
         _pitch = currentRot.x;
     }
 
+    private void Update()
+    {
+        IsAiming = Input.GetMouseButton(1);
+        Rotate();
+    }
+
     private void LateUpdate()
     {
         if (_target == null)
         {
             return;
         }
-
-        Rotate();
 
         UpdateCameraPosition();
     }
@@ -67,8 +78,7 @@ public class ThirdPersonCamera : MonoBehaviour
     private void UpdateCameraPosition()
     {
         Quaternion rot = Quaternion.Euler(_pitch, _yaw, 0f);
-
-        Vector3 offset = Input.GetMouseButton(1) ? _aimOffset : _normaloffset;
+        Vector3 offset = IsAiming ? _aimOffset : _normalOffset;
 
         _camera.transform.position = _target.position + rot * offset;
         _camera.transform.rotation = rot;
@@ -76,18 +86,32 @@ public class ThirdPersonCamera : MonoBehaviour
 
     public Vector3 GetForward()
     {
-        Vector3 forward = _camera.transform.forward;
-        forward.y = 0f;
-
+        Quaternion rot = Quaternion.Euler(0f, _yaw, 0f);
+        Vector3 forward = rot * Vector3.forward;
         return forward.normalized;
     }
 
     public Vector3 GetRight()
     {
-        Vector3 right = _camera.transform.right;
-        right.y = 0f;
-
+        Quaternion rot = Quaternion.Euler(0f, _yaw, 0f);
+        Vector3 right = rot * Vector3.right;
         return right.normalized;
+    }
+
+    public Vector3 GetAimPosition()
+    {
+        Quaternion rot = Quaternion.Euler(_pitch, _yaw, 0f);
+        Vector3 camPos = _target.position + rot * (IsAiming ? _aimOffset : _normalOffset);
+        Vector3 camForward = rot * Vector3.forward;
+
+        Ray ray = new Ray(camPos, camForward);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, _aimRaycastDistance, _aimRaycastMask, QueryTriggerInteraction.Ignore))
+        {
+            return hit.point;
+        }
+
+        return ray.GetPoint(_aimRaycastDistance);
     }
 
 }
