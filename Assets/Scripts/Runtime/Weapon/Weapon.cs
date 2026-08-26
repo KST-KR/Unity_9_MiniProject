@@ -12,6 +12,7 @@ public class Weapon : MonoBehaviour
     [SerializeField] private GameObject _bulletPrefabs;
     [SerializeField] private Transform _firePoint;
     [SerializeField] private float _fireRate = 0.2f;
+    [SerializeField] private float _damage = 10f;
 
     [Header("탄창")]
     [SerializeField] private int _magazineSize = 12;
@@ -30,6 +31,9 @@ public class Weapon : MonoBehaviour
     [SerializeField] private float _returnSpeed = 20f;
     [SerializeField] private float _cameraRecoilAmount = 1f;
 
+    [Header("앉기 반동")]
+    [SerializeField] private float _crouchRecoilMultiplier = 0.5f;
+
     [Header("UI")]
     [SerializeField] private Sprite _weaponIcon;
 
@@ -42,9 +46,12 @@ public class Weapon : MonoBehaviour
 
     #region 내부 변수
     private int _currentAmmo;
+
     private float _lastFireTime;
     private float _reloadEndTime;
+
     private bool _isReloading;
+    private bool _isCrouching;
 
     private Quaternion _initialLocalRotation;
     private Quaternion _targetLocalRotation;
@@ -122,13 +129,27 @@ public class Weapon : MonoBehaviour
         bullet.transform.position = _firePoint.position;
         bullet.transform.rotation = Quaternion.LookRotation(fireDir);
 
-        bullet.Initialize(fireDir, _bulletPool);
+        bullet.Initialize(fireDir, _damage, _bulletPool);
 
         _muzzleFlash.Play();
 
-        _targetLocalRotation = _initialLocalRotation * Quaternion.Euler(-_recoilAngle, 0f, 0f);
+        float recoilAngle = _recoilAngle;
 
-        _cameraController.AddRecoil(_cameraRecoilAmount);
+        if (_isCrouching)
+        {
+            recoilAngle *= _crouchRecoilMultiplier;
+        }
+
+        _targetLocalRotation = _initialLocalRotation * Quaternion.Euler(-recoilAngle, 0f, 0f);
+
+        float cameraRecoil = _cameraRecoilAmount;
+
+        if (_isCrouching)
+        {
+            cameraRecoil *= _crouchRecoilMultiplier;
+        }
+
+        _cameraController.AddRecoil(cameraRecoil);
 
         return true;
     }
@@ -151,6 +172,11 @@ public class Weapon : MonoBehaviour
         ReloadStarted?.Invoke();
 
         return true;
+    }
+
+    public void SetCrouching(bool isCrouching)
+    {
+        _isCrouching = isCrouching;
     }
 
     private void UpdateReload()

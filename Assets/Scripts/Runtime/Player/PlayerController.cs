@@ -6,7 +6,7 @@ public class PlayerController : MonoBehaviour
     #region 인스펙터
     [Header("이동 속도")]
     [SerializeField] private float _moveSpeed = 5f;
-    [SerializeField] private float _runMultiPlier = 1.8f;
+    [SerializeField] private float _runMultiplier = 1.8f;
 
     [Header("점프")]
     [SerializeField] private float _jumpHeight = 2f;
@@ -32,11 +32,14 @@ public class PlayerController : MonoBehaviour
     private string _paramSpeed = "Speed";
     private string _paramRunning = "IsRunning";
     private string _paramJump = "Jump";
+    private string _paramCrouching = "IsCrouching";
     private string _paramAiming = "IsAiming";
     private string _paramShoot = "Shoot";
     private string _paramReload = "Reload";
     private string _paramWeaponType = "WeaponType";
     private string _paramGrounded = "IsGrounded";
+    private string _paramHit = "Hit";
+    private string _paramDeath = "Death";
 
     private float _animationDamp = 0.1f;
     private float _verticalVelocity;
@@ -44,14 +47,21 @@ public class PlayerController : MonoBehaviour
     private int _hashSpeed;
     private int _hashRunning;
     private int _hashJump;
+    private int _hashCrouching;
     private int _hashAiming;
     private int _hashShoot;
     private int _hashReload;
     private int _hashWeaponType;
     private int _hashGrounded;
+    private int _hashHit;
+    private int _hashDeath;
     private int _currentWeaponIndex = 0;
 
+    private bool _isCrouching;
+    private bool _isDead;
+
     private CharacterController _characterController;
+    private Health _health;
 
     private Vector3 _moveVelocity;
     #endregion
@@ -63,20 +73,27 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         _characterController = GetComponent<CharacterController>();
+        _health = GetComponent<Health>();
 
         if (_animator == null)
         {
             _animator = GetComponentInChildren<Animator>();
         }
 
+        _health.Hit += OnHit;
+        _health.Died += OnDied;
+
         _hashSpeed = Animator.StringToHash(_paramSpeed);
         _hashAiming = Animator.StringToHash(_paramAiming);
+        _hashJump = Animator.StringToHash(_paramJump);
+        _hashCrouching = Animator.StringToHash(_paramCrouching);
         _hashShoot = Animator.StringToHash(_paramShoot);
         _hashReload = Animator.StringToHash(_paramReload);
         _hashWeaponType = Animator.StringToHash(_paramWeaponType);
         _hashRunning = Animator.StringToHash(_paramRunning);
-        _hashJump = Animator.StringToHash(_paramJump);
         _hashGrounded = Animator.StringToHash(_paramGrounded);
+        _hashHit = Animator.StringToHash(_paramHit);
+        _hashDeath = Animator.StringToHash(_paramDeath);
     }
 
     private void Start()
@@ -101,15 +118,24 @@ public class PlayerController : MonoBehaviour
         _weaponAimRigController.SetWeaponType(currentWeapon.Type);
         _weaponAimRigController.SetLeftHandTarget(currentWeapon.LeftHandTarget);
 
+        currentWeapon.SetCrouching(_isCrouching);
+
         currentWeapon.ReloadStarted += OnReloadStarted;
         currentWeapon.ReloadCompleted += OnReloadCompleted;
     }
 
     private void Update()
     {
+        if (_isDead)
+        {
+            return;
+        }
+
         Move();
         JumpAndGravity();
         ApplyMovement();
+        Crouch();
+        UpdateCameraCrouch();
 
         Aim();
         SwitchWeapon();
@@ -141,9 +167,13 @@ public class PlayerController : MonoBehaviour
 
         float currentSpeed = _moveSpeed;
 
-        if (isMoving && Input.GetKey(KeyCode.LeftShift))
+        if (Input.GetKeyDown(KeyCode.LeftControl))
         {
-            currentSpeed *= _runMultiPlier;
+            currentSpeed *= 0.5f;
+        }
+        else if (isMoving && Input.GetKey(KeyCode.LeftShift))
+        {
+            currentSpeed *= _runMultiplier;
         }
 
         _moveVelocity = moveDir * currentSpeed;
@@ -177,6 +207,23 @@ public class PlayerController : MonoBehaviour
         velocity.y = _verticalVelocity;
 
         _characterController.Move(velocity * Time.deltaTime);
+    }
+
+    private void Crouch()
+    {
+        if (!Input.GetKeyDown(KeyCode.LeftControl))
+        {
+            return;
+        }
+
+        _isCrouching = !_isCrouching;
+
+        CurrentWeapon.SetCrouching(_isCrouching);
+    }
+
+    private void UpdateCameraCrouch()
+    {
+        _cameraController.SetCrouching(_isCrouching);
     }
 
     private void Aim()
@@ -241,6 +288,8 @@ public class PlayerController : MonoBehaviour
         _weaponAimRigController.SetWeaponType(currentWeapon.Type);
         _weaponAimRigController.SetLeftHandTarget(currentWeapon.LeftHandTarget);
 
+        currentWeapon.SetCrouching(_isCrouching);
+
         WeaponChanged?.Invoke();
     }
 
@@ -284,11 +333,27 @@ public class PlayerController : MonoBehaviour
 
         bool isReloading = _weapons[_currentWeaponIndex].IsReloading;
         bool isAiming = Input.GetMouseButton(1) && !isReloading;
-        bool isRunning = input != Vector3.zero && Input.GetKey(KeyCode.LeftShift);
+        bool isRunning = input != Vector3.zero && Input.GetKey(KeyCode.LeftShift) && !_isCrouching;
         bool isGrounded = _characterController.isGrounded;
 
         _animator.SetBool(_hashAiming, isAiming);
         _animator.SetBool(_hashRunning, isRunning);
         _animator.SetBool(_hashGrounded, isGrounded);
+        _animator.SetBool(_hashCrouching, _isCrouching);
+    }
+
+    private void OnHit()
+    {
+        _animator.SetTrigger(_hashHit);
+    }
+
+    private void OnDied()
+    {
+        _isDead = true;
+
+        _animator.SetFloat(_hashSpeed, 0f);
+        _animator.SetBool(_hashAiming, false);
+        _animator.SetBool(_hashRunning, false);
+        _animator.SetTrigger(_hashDeath);
     }
 }

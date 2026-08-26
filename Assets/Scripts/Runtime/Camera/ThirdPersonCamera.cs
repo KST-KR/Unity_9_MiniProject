@@ -25,6 +25,10 @@ public class ThirdPersonCamera : MonoBehaviour
     [Header("카메라 반동")]
     [SerializeField] private float _recoilSpeed = 15f;
     [SerializeField] private float _recoilReturnSpeed = 10f;
+
+    [Header("앉기 카메라")]
+    [SerializeField] private float _crouchCameraOffset = 1f;
+    [SerializeField] private float _crouchCameraSpeed = 8f;
     #endregion
 
     #region 내부 변수
@@ -34,9 +38,12 @@ public class ThirdPersonCamera : MonoBehaviour
     private float _pitch;
     private float _recoilPitch;
     private float _targetRecoilPitch;
+    private float _currentCrouchOffset;
 
-    public bool IsAiming { get; private set; }
+    private bool _isCrouching;
     #endregion
+    public bool IsAiming { get; private set; }
+
 
     private void Awake()
     {
@@ -68,6 +75,7 @@ public class ThirdPersonCamera : MonoBehaviour
             return;
         }
 
+        UpdateCrouchCamera();
         UpdateCameraPosition();
     }
 
@@ -82,12 +90,22 @@ public class ThirdPersonCamera : MonoBehaviour
         _pitch = Mathf.Clamp(_pitch, -30f, 60f);
     }
 
+    private void UpdateCrouchCamera()
+    {
+        float targetOffset = _isCrouching ? -_crouchCameraOffset : 0f;
+
+        _currentCrouchOffset = Mathf.MoveTowards(_currentCrouchOffset, targetOffset, _crouchCameraSpeed * Time.deltaTime);
+    }
+
     private void UpdateCameraPosition()
     {
         Quaternion rot = Quaternion.Euler(_pitch + _recoilPitch, _yaw, 0f);
         Vector3 offset = IsAiming ? _aimOffset : _normalOffset;
 
-        _camera.transform.position = _target.position + rot * offset;
+        Vector3 targetPosition = _target.position;
+        targetPosition.y += _currentCrouchOffset;
+
+        _camera.transform.position = targetPosition + rot * offset;
         _camera.transform.rotation = rot;
     }
 
@@ -131,5 +149,10 @@ public class ThirdPersonCamera : MonoBehaviour
         _recoilPitch = Mathf.MoveTowards(_recoilPitch, _targetRecoilPitch, _recoilSpeed * Time.deltaTime);
 
         _targetRecoilPitch = Mathf.MoveTowards(_targetRecoilPitch, 0f, _recoilReturnSpeed * Time.deltaTime);
+    }
+
+    public void SetCrouching(bool isCrouching)
+    {
+        _isCrouching = isCrouching;
     }
 }
