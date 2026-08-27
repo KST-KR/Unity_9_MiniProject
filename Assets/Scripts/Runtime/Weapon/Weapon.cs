@@ -129,7 +129,7 @@ public class Weapon : MonoBehaviour
         bullet.transform.position = _firePoint.position;
         bullet.transform.rotation = Quaternion.LookRotation(fireDir);
 
-        bullet.Initialize(fireDir, _damage, _bulletPool);
+        bullet.Initialize(fireDir, _damage, _bulletPool, Bullet.BulletOwner.Player);
 
         _muzzleFlash.Play();
 

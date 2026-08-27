@@ -126,7 +126,13 @@ public class ThirdPersonCamera : MonoBehaviour
     public Vector3 GetAimPosition()
     {
         Quaternion rot = Quaternion.Euler(_pitch, _yaw, 0f);
-        Vector3 camPos = _target.position + rot * (IsAiming ? _aimOffset : _normalOffset);
+
+        Vector3 targetPos = _target.position;
+        targetPos.y += _currentCrouchOffset;
+
+        Vector3 offset = IsAiming ? _aimOffset : _normalOffset;
+
+        Vector3 camPos = targetPos + rot * offset;
         Vector3 camForward = rot * Vector3.forward;
 
         Ray ray = new Ray(camPos, camForward);

@@ -21,6 +21,7 @@ public class WeaponAimRigController : MonoBehaviour
     #region 내부 변수
     private WeaponType _currentWeaponType;
     private bool _isReloading;
+    private bool _isThrowingGrenade;
     #endregion
 
     private void Awake()
@@ -46,7 +47,7 @@ public class WeaponAimRigController : MonoBehaviour
             return;
         }
 
-        if (_isReloading)
+        if (_isReloading || _isThrowingGrenade)
         {
             _rifleAimRig.weight = Mathf.MoveTowards(_rifleAimRig.weight, 0f, _blendSpeed * Time.deltaTime);
 
@@ -95,5 +96,10 @@ public class WeaponAimRigController : MonoBehaviour
     public void SetReloading(bool isReloading)
     {
         _isReloading = isReloading;
+    }
+
+    public void SetThrowingGrenade(bool isThrowingGrenade)
+    {
+        _isThrowingGrenade = isThrowingGrenade;
     }
 }

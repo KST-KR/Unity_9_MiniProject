@@ -1,22 +1,25 @@
 ﻿using UnityEngine;
 
-public class EnemyController : MonoBehaviour
+public class RangedEnemyController : MonoBehaviour
 {
     #region 인스펙터
     [Header("이동")]
     [SerializeField] private float _moveSpeed = 2f;
-    [SerializeField] private float _attackDistance = 2f;
-    [SerializeField] private float _attackInterval = 1.5f;
+    [SerializeField] private float _attackDistance = 10f;
 
     [Header("공격")]
-    [SerializeField] private float _attackDamage = 10f;
-    [SerializeField] private float _attackHitTime = 0.5f;
+    [SerializeField] private float _attackInterval = 1.5f;
+    [SerializeField] private float _attackDuration = 0.8f;
+    [SerializeField] private float _attackShootTime = 0.4f;
 
     [Header("피격")]
     [SerializeField] private float _hitDuration = 0.5f;
 
     [Header("사망")]
     [SerializeField] private float _deathDuration = 1.5f;
+
+    [Header("무기")]
+    [SerializeField] private EnemyPistol _pistol;
 
     [Header("플레이어")]
     [SerializeField] private Transform _target;
@@ -40,13 +43,14 @@ public class EnemyController : MonoBehaviour
 
     private float _nextAttackTime;
     private float _attackEndTime;
+    private float _attackShootEndTime;
     private float _hitEndTime;
     private float _deathEndTime;
 
     private bool _isAttacking;
+    private bool _hasAttackShot;
     private bool _isHit;
     private bool _isDead;
-    private bool _hasAttackHit;
 
     private Health _health;
     private Collider[] _colliders;
@@ -68,7 +72,7 @@ public class EnemyController : MonoBehaviour
         _hashDeath = Animator.StringToHash(_paramDeath);
         _hashEnemyType = Animator.StringToHash(_paramEnemyType);
 
-        _animator.SetInteger(_hashEnemyType, 0);
+        _animator.SetInteger(_hashEnemyType, 1);
 
         _health.Hit += OnHit;
         _health.Died += OnDied;
@@ -112,13 +116,14 @@ public class EnemyController : MonoBehaviour
         _isHit = false;
     }
 
-    private void UpdateAttack()
+    private void UpdateDeath()
     {
-        if (!_hasAttackHit && Time.time >= _attackEndTime)
+        if (Time.time < _deathEndTime)
         {
-            _hasAttackHit = true;
-            AttackTarget();
+            return;
         }
+
+        gameObject.SetActive(false);
     }
 
     private void UpdateCombat()
@@ -141,7 +146,7 @@ public class EnemyController : MonoBehaviour
     {
         if (moveDir == Vector3.zero)
         {
-            _animator.SetFloat(_hashSpeed, 0f);
+            StopAndLook(moveDir);
             return;
         }
 
@@ -151,6 +156,16 @@ public class EnemyController : MonoBehaviour
         transform.rotation = Quaternion.LookRotation(moveDir);
 
         _animator.SetFloat(_hashSpeed, 1f);
+    }
+
+    private void StopAndLook(Vector3 targetDir)
+    {
+        _animator.SetFloat(_hashSpeed, 0f);
+
+        if (targetDir != Vector3.zero)
+        {
+            transform.rotation = Quaternion.LookRotation(targetDir);
+        }
     }
 
     private void Attack(Vector3 targetDir)
@@ -170,47 +185,59 @@ public class EnemyController : MonoBehaviour
         _nextAttackTime = Time.time + _attackInterval;
 
         _isAttacking = true;
-        _hasAttackHit = false;
-        _attackEndTime = Time.time + _attackHitTime;
+        _hasAttackShot = false;
+
+        _attackEndTime = Time.time + _attackDuration;
+        _attackShootEndTime = Time.time + _attackShootTime;
 
         _animator.SetTrigger(_hashAttack);
     }
 
-    private void AttackTarget()
+    private void UpdateAttack()
     {
+        if (!_hasAttackShot && Time.time >= _attackShootEndTime)
+        {
+            CPrint.Log("Shoot 실행");
+
+            _hasAttackShot = true;
+            Shoot();
+        }
+
+        if (Time.time >= _attackEndTime)
+        {
+            _isAttacking = false;
+        }
+    }
+
+    private void Shoot()
+    {
+        CPrint.Log("Shoot 호출");
+
+        if (_pistol == null)
+        {
+            CPrint.Log("Enemy_Pistol 없음");
+            return;
+        }
+
         if (_target == null)
         {
-            _isAttacking = false;
+            CPrint.Log("Target 없음");
             return;
         }
 
-        Vector3 targetDir = _target.position - transform.position;
-        targetDir.y = 0f;
-
-        if (targetDir.magnitude > _attackDistance)
-        {
-            _isAttacking = false;
-            return;
-        }
-
-        Health targetHealth = _target.GetComponent<Health>();
-
-        if (targetHealth != null)
-        {
-            CPrint.Log($"Enemy 공격 Damage : {_attackDamage}");
-
-            targetHealth.TakeDamage(_attackDamage);
-        }
-
-        _isAttacking = false;
+        _pistol.Fire(_target);
     }
 
     private void OnHit()
     {
+        CPrint.Log("OnHit 호출");
+
         if (_isDead)
         {
             return;
         }
+
+        CPrint.Log("원거리 적 Hit");
 
         _isHit = true;
         _isAttacking = false;
@@ -236,15 +263,5 @@ public class EnemyController : MonoBehaviour
         _animator.SetTrigger(_hashDeath);
 
         _deathEndTime = Time.time + _deathDuration;
-    }
-
-    private void UpdateDeath()
-    {
-        if (Time.time < _deathEndTime)
-        {
-            return;
-        }
-
-        gameObject.SetActive(false);
     }
 }

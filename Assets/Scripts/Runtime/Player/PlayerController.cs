@@ -59,6 +59,7 @@ public class PlayerController : MonoBehaviour
 
     private bool _isCrouching;
     private bool _isDead;
+    private bool _canAim = true;
 
     private CharacterController _characterController;
     private Health _health;
@@ -130,11 +131,11 @@ public class PlayerController : MonoBehaviour
         {
             return;
         }
-
+        
+        Crouch();
         Move();
         JumpAndGravity();
         ApplyMovement();
-        Crouch();
         UpdateCameraCrouch();
 
         Aim();
@@ -167,7 +168,7 @@ public class PlayerController : MonoBehaviour
 
         float currentSpeed = _moveSpeed;
 
-        if (Input.GetKeyDown(KeyCode.LeftControl))
+        if (_isCrouching)
         {
             currentSpeed *= 0.5f;
         }
@@ -228,11 +229,26 @@ public class PlayerController : MonoBehaviour
 
     private void Aim()
     {
+        if (!_canAim)
+        {
+            return;
+        }
+
         Vector3 lookDir = _cameraController.GetForward();
 
         if (lookDir != Vector3.zero)
         {
             transform.rotation = Quaternion.LookRotation(lookDir);
+        }
+    }
+
+    public void SetAiming(bool canAim)
+    {
+        _canAim = canAim;
+
+        if (!canAim)
+        {
+            _animator.SetBool(_hashAiming, false);
         }
     }
 
@@ -332,7 +348,7 @@ public class PlayerController : MonoBehaviour
         _animator.SetFloat(_hashSpeed, speed, _animationDamp, Time.deltaTime);
 
         bool isReloading = _weapons[_currentWeaponIndex].IsReloading;
-        bool isAiming = Input.GetMouseButton(1) && !isReloading;
+        bool isAiming = Input.GetMouseButton(1) && !isReloading && _canAim;
         bool isRunning = input != Vector3.zero && Input.GetKey(KeyCode.LeftShift) && !_isCrouching;
         bool isGrounded = _characterController.isGrounded;
 
