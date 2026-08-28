@@ -68,8 +68,6 @@ public class EnemyController : MonoBehaviour
         _hashDeath = Animator.StringToHash(_paramDeath);
         _hashEnemyType = Animator.StringToHash(_paramEnemyType);
 
-        _animator.SetInteger(_hashEnemyType, 0);
-
         _health.Hit += OnHit;
         _health.Died += OnDied;
     }
@@ -246,5 +244,30 @@ public class EnemyController : MonoBehaviour
         }
 
         gameObject.SetActive(false);
+    }
+
+    private void OnEnable()
+    {
+        _isAttacking = false;
+        _isHit = false;
+        _isDead = false;
+        _hasAttackHit = false;
+
+        if (_colliders == null)
+        {
+            _colliders = GetComponentsInChildren<Collider>();
+        }
+
+        foreach (Collider collider in _colliders)
+        {
+            collider.enabled = true;
+        }
+
+        _animator.SetInteger(_hashEnemyType, 0);
+    }
+
+    public void SetTarget(Transform target)
+    {
+        _target = target;
     }
 }

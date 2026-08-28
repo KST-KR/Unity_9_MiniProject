@@ -72,8 +72,6 @@ public class RangedEnemyController : MonoBehaviour
         _hashDeath = Animator.StringToHash(_paramDeath);
         _hashEnemyType = Animator.StringToHash(_paramEnemyType);
 
-        _animator.SetInteger(_hashEnemyType, 1);
-
         _health.Hit += OnHit;
         _health.Died += OnDied;
     }
@@ -263,5 +261,30 @@ public class RangedEnemyController : MonoBehaviour
         _animator.SetTrigger(_hashDeath);
 
         _deathEndTime = Time.time + _deathDuration;
+    }
+
+    private void OnEnable()
+    {
+        _isAttacking = false;
+        _isHit = false;
+        _isDead = false;
+        _hasAttackShot = false;
+
+        if (_colliders == null)
+        {
+            _colliders = GetComponentsInChildren<Collider>();
+        }
+
+        foreach (Collider collider in _colliders)
+        {
+            collider.enabled = true;
+        }
+
+        _animator.SetInteger(_hashEnemyType, 1);
+    }
+
+    public void SetTarget(Transform target)
+    {
+        _target = target;
     }
 }

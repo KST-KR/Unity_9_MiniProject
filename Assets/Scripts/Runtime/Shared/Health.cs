@@ -53,4 +53,9 @@ public class Health : MonoBehaviour
     {
         Died?.Invoke();
     }
+
+    private void OnEnable()
+    {
+        _currentHealth = _maxHealth;
+    }
 }

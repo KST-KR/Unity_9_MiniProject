@@ -16,6 +16,11 @@ public class EnemyPistol : MonoBehaviour
     [SerializeField] private float _targetHeightOffset = 1f;
     #endregion
 
+    public void SetBulletPool(BulletPool bulletPool)
+    {
+        _bulletPool = bulletPool;
+    }
+
     public void Fire(Transform target)
     {
         CPrint.Log("Fire 호출");

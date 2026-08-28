@@ -60,6 +60,7 @@ public class PlayerController : MonoBehaviour
     private bool _isCrouching;
     private bool _isDead;
     private bool _canAim = true;
+    private bool _canShoot = true;
 
     private CharacterController _characterController;
     private Health _health;
@@ -311,6 +312,11 @@ public class PlayerController : MonoBehaviour
 
     private void Shoot()
     {
+        if (!_canShoot)
+        {
+            return;
+        }
+
         if (!Input.GetMouseButton(0))
         {
             return;
@@ -320,6 +326,11 @@ public class PlayerController : MonoBehaviour
         {
             _animator.SetTrigger(_hashShoot);
         }
+    }
+
+    public void SetShooting(bool canShoot)
+    {
+        _canShoot = canShoot;
     }
 
     private void Reload()
