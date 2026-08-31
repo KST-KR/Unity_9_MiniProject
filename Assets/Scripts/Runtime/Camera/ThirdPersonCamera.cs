@@ -125,7 +125,7 @@ public class ThirdPersonCamera : MonoBehaviour
 
     public Vector3 GetAimPosition()
     {
-        Quaternion rot = Quaternion.Euler(_pitch, _yaw, 0f);
+        Quaternion rot = Quaternion.Euler(_pitch + _recoilPitch, _yaw, 0f);
 
         Vector3 targetPos = _target.position;
         targetPos.y += _currentCrouchOffset;

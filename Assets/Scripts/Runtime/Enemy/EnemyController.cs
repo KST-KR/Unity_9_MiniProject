@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.AI;
 
 public class EnemyController : MonoBehaviour
 {
@@ -42,6 +43,8 @@ public class EnemyController : MonoBehaviour
     private float _attackEndTime;
     private float _hitEndTime;
     private float _deathEndTime;
+    private float _baseAttackDamage;
+    private float _currentAttackDamage;
 
     private bool _isAttacking;
     private bool _isHit;
@@ -50,10 +53,25 @@ public class EnemyController : MonoBehaviour
 
     private Health _health;
     private Collider[] _colliders;
+    private NavMeshAgent _agent;
     #endregion
+
+    #region 이벤트
+    public event System.Action DeathAnimationCompleted;
+    #endregion
+
+    public void SetDamageMultiplier(float multiplier)
+    {
+        _currentAttackDamage = _baseAttackDamage * multiplier;
+
+        CPrint.Log($"근거리 적 공격력 설정 : 기본 {_baseAttackDamage} → 현재 {_currentAttackDamage}");
+    }
 
     private void Awake()
     {
+        _baseAttackDamage = _attackDamage;
+        _currentAttackDamage = _attackDamage;
+
         if (_animator == null)
         {
             _animator = GetComponentInChildren<Animator>();
@@ -61,6 +79,7 @@ public class EnemyController : MonoBehaviour
 
         _health = GetComponent<Health>();
         _colliders = GetComponentsInChildren<Collider>();
+        _agent = GetComponent<NavMeshAgent>();
 
         _hashSpeed = Animator.StringToHash(_paramSpeed);
         _hashAttack = Animator.StringToHash(_paramAttack);
@@ -70,6 +89,15 @@ public class EnemyController : MonoBehaviour
 
         _health.Hit += OnHit;
         _health.Died += OnDied;
+
+        if (_agent != null)
+        {
+            _agent.speed = _moveSpeed;
+        }
+        else
+        {
+            CPrint.Warn($"NavMeshAgent 없음 : {name}");
+        }
     }
 
     private void Update()
@@ -128,31 +156,54 @@ public class EnemyController : MonoBehaviour
 
         if (distance <= _attackDistance)
         {
+            StopAgent();
             Attack(targetDir);
             return;
         }
 
-        Move(targetDir);
+        Move();
     }
 
-    private void Move(Vector3 moveDir)
+    private void Move()
     {
-        if (moveDir == Vector3.zero)
+        if (_agent == null)
         {
-            _animator.SetFloat(_hashSpeed, 0f);
             return;
         }
 
-        moveDir.Normalize();
+        if (!_agent.isOnNavMesh)
+        {
+            CPrint.Warn($"NavMesh 위에 있지 않음 : {name}");
+            return;
+        }
 
-        transform.position += moveDir * _moveSpeed * Time.deltaTime;
-        transform.rotation = Quaternion.LookRotation(moveDir);
+        _agent.isStopped = false;
+        _agent.SetDestination(_target.position);
 
         _animator.SetFloat(_hashSpeed, 1f);
     }
 
+    private void StopAgent()
+    {
+        if (_agent == null)
+        {
+            return;
+        }
+
+        if (!_agent.isOnNavMesh)
+        {
+            return;
+        }
+
+        _agent.isStopped = true;
+
+        _animator.SetFloat(_hashSpeed, 0f);
+    }
+
     private void Attack(Vector3 targetDir)
     {
+        CPrint.Log($"공격 거리 진입 : {name}");
+
         _animator.SetFloat(_hashSpeed, 0f);
 
         if (targetDir != Vector3.zero)
@@ -170,6 +221,8 @@ public class EnemyController : MonoBehaviour
         _isAttacking = true;
         _hasAttackHit = false;
         _attackEndTime = Time.time + _attackHitTime;
+
+        CPrint.Log("근거리 적 Attack 애니메이션 실행");
 
         _animator.SetTrigger(_hashAttack);
     }
@@ -195,9 +248,9 @@ public class EnemyController : MonoBehaviour
 
         if (targetHealth != null)
         {
-            CPrint.Log($"Enemy 공격 Damage : {_attackDamage}");
+            CPrint.Log($"Enemy 공격 Damage : {_currentAttackDamage}");
 
-            targetHealth.TakeDamage(_attackDamage);
+            targetHealth.TakeDamage(_currentAttackDamage);
         }
 
         _isAttacking = false;
@@ -209,6 +262,8 @@ public class EnemyController : MonoBehaviour
         {
             return;
         }
+
+        StopAgent();
 
         _isHit = true;
         _isAttacking = false;
@@ -224,6 +279,8 @@ public class EnemyController : MonoBehaviour
         _isDead = true;
         _isHit = false;
         _isAttacking = false;
+
+        StopAgent();
 
         foreach (Collider collider in _colliders)
         {
@@ -243,7 +300,7 @@ public class EnemyController : MonoBehaviour
             return;
         }
 
-        gameObject.SetActive(false);
+        DeathAnimationCompleted?.Invoke();
     }
 
     private void OnEnable()
@@ -261,6 +318,19 @@ public class EnemyController : MonoBehaviour
         foreach (Collider collider in _colliders)
         {
             collider.enabled = true;
+        }
+
+        if (_agent == null)
+        {
+            _agent = GetComponent<NavMeshAgent>();
+        }
+
+        if (_agent != null)
+        {
+            _agent.enabled = true;
+            _agent.speed = _moveSpeed;
+            _agent.isStopped = false;
+            _agent.ResetPath();
         }
 
         _animator.SetInteger(_hashEnemyType, 0);

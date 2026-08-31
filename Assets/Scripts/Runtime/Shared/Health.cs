@@ -8,12 +8,16 @@ public class Health : MonoBehaviour
     #endregion
 
     #region 내부 변수
+    private float _baseMaxHealth;
+    private float _currentMaxHealth;
     private float _currentHealth;
+
+    private float _healthMultiplier = 1f;
     #endregion
 
-    #region 파라미터
+    #region 프로퍼티
     public float CurrentHealth => _currentHealth;
-    public float MaxHealth => _maxHealth;
+    public float MaxHealth => _currentMaxHealth;
     #endregion
 
     #region 이벤트
@@ -23,7 +27,19 @@ public class Health : MonoBehaviour
 
     protected virtual void Awake()
     {
-        _currentHealth = _maxHealth;
+        _baseMaxHealth = _maxHealth;
+        _currentMaxHealth = _baseMaxHealth;
+        _currentHealth = _currentMaxHealth;
+    }
+
+    public void SetHealthMultiplier(float multiplier)
+    {
+        _healthMultiplier = multiplier;
+
+        _currentMaxHealth = _baseMaxHealth * _healthMultiplier;
+        _currentHealth = _currentMaxHealth;
+
+        CPrint.Log($"적 체력 설정 : 기본 {_baseMaxHealth} → 현재 {_currentMaxHealth}");
     }
 
     public virtual void TakeDamage(float damage)
@@ -56,6 +72,6 @@ public class Health : MonoBehaviour
 
     private void OnEnable()
     {
-        _currentHealth = _maxHealth;
+        _currentHealth = _currentMaxHealth;
     }
 }

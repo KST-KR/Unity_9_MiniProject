@@ -32,7 +32,7 @@ public class Weapon : MonoBehaviour
     [SerializeField] private float _cameraRecoilAmount = 1f;
 
     [Header("앉기 반동")]
-    [SerializeField] private float _crouchRecoilMultiplier = 0.5f;
+    [SerializeField] private float _crouchRecoilMultiplier = 0.7f;
 
     [Header("UI")]
     [SerializeField] private Sprite _weaponIcon;
@@ -42,6 +42,9 @@ public class Weapon : MonoBehaviour
 
     [Header("왼손 IK")]
     [SerializeField] private Transform _leftHandTarget;
+
+    [Header("총알")]
+    [SerializeField] private float _bulletSpeed = 50f;
     #endregion
 
     #region 내부 변수
@@ -103,6 +106,26 @@ public class Weapon : MonoBehaviour
             return false;
         }
 
+        float recoilAngle = _recoilAngle;
+
+        if (_isCrouching)
+        {
+            recoilAngle *= _crouchRecoilMultiplier;
+        }
+
+        _targetLocalRotation =
+            _initialLocalRotation *
+            Quaternion.Euler(-recoilAngle, 0f, 0f);
+
+        float cameraRecoil = _cameraRecoilAmount;
+
+        if (_isCrouching)
+        {
+            cameraRecoil *= _crouchRecoilMultiplier;
+        }
+
+        _cameraController.AddRecoil(cameraRecoil);
+
         Vector3 aimPos = _cameraController.GetAimPosition();
 
         Vector3 fireDir = aimPos - _firePoint.position;
@@ -129,27 +152,9 @@ public class Weapon : MonoBehaviour
         bullet.transform.position = _firePoint.position;
         bullet.transform.rotation = Quaternion.LookRotation(fireDir);
 
-        bullet.Initialize(fireDir, _damage, _bulletPool, Bullet.BulletOwner.Player);
+        bullet.Initialize(fireDir, _damage, _bulletSpeed, _bulletPool, Bullet.BulletOwner.Player);
 
         _muzzleFlash.Play();
-
-        float recoilAngle = _recoilAngle;
-
-        if (_isCrouching)
-        {
-            recoilAngle *= _crouchRecoilMultiplier;
-        }
-
-        _targetLocalRotation = _initialLocalRotation * Quaternion.Euler(-recoilAngle, 0f, 0f);
-
-        float cameraRecoil = _cameraRecoilAmount;
-
-        if (_isCrouching)
-        {
-            cameraRecoil *= _crouchRecoilMultiplier;
-        }
-
-        _cameraController.AddRecoil(cameraRecoil);
 
         return true;
     }

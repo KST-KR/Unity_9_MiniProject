@@ -14,7 +14,28 @@ public class EnemyPistol : MonoBehaviour
 
     [Header("조준 보정")]
     [SerializeField] private float _targetHeightOffset = 1f;
+    
+    [Header("총알")]
+    [SerializeField] private float _bulletSpeed = 10f;
     #endregion
+
+    #region 내부 변수
+    private float _baseDamage;
+    private float _currentDamage;
+    #endregion
+
+    private void Awake()
+    {
+        _baseDamage = _damage;
+        _currentDamage = _damage;
+    }
+
+    public void SetDamageMultiplier(float multiplier)
+    {
+        _currentDamage = _baseDamage * multiplier;
+
+        CPrint.Log($"원거리 적 공격력 설정 : 기본 {_baseDamage} → 현재 {_currentDamage}");
+    }
 
     public void SetBulletPool(BulletPool bulletPool)
     {
@@ -65,8 +86,8 @@ public class EnemyPistol : MonoBehaviour
         bullet.transform.position = _firePoint.position;
         bullet.transform.rotation = Quaternion.LookRotation(fireDir);
 
-        bullet.Initialize(fireDir, _damage, _bulletPool, Bullet.BulletOwner.Enemy);
+        bullet.Initialize(fireDir, _currentDamage, _bulletSpeed, _bulletPool, Bullet.BulletOwner.Enemy);
 
-        CPrint.Log($"원거리 적 공격 Damage : {_damage}");
+        CPrint.Log($"원거리 적 공격 Damage : {_currentDamage}");
     }
 }

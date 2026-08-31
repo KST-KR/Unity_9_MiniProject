@@ -23,7 +23,7 @@ public class BulletPool : MonoBehaviour
     {
         for (int i = 0; i < _poolSize; i++)
         {
-            Bullet bullet = Instantiate(_bulletPrefab, transform);
+            Bullet bullet = Instantiate(_bulletPrefab);
 
             bullet.gameObject.SetActive(false);
 

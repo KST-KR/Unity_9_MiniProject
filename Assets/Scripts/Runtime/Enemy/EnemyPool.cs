@@ -82,5 +82,4 @@ public class EnemyPool : MonoBehaviour
 
         enemy.SetActive(false);
     }
-
 }

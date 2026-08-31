@@ -16,6 +16,11 @@ public class Bullet : MonoBehaviour
     [Header("충돌")]
     [SerializeField] private LayerMask _enemyLayer;
     [SerializeField] private LayerMask _playerLayer;
+    [SerializeField] private LayerMask _coverLayer;
+
+    [Header("Gizmos")]
+    [SerializeField] private bool _showDirectionGizmos = true;
+    [SerializeField] private float _gizmosLength = 1f;
     #endregion
 
     #region 내부 변수
@@ -26,14 +31,17 @@ public class Bullet : MonoBehaviour
     private BulletOwner _owner;
     #endregion
 
-    public void Initialize(Vector3 dir, float damage, BulletPool pool, BulletOwner owner)
+    public void Initialize(Vector3 dir, float damage, float moveSpeed, BulletPool pool, BulletOwner owner)
     {
         transform.forward = dir.normalized;
 
         _destroyTime = Time.time + _lifeTime;
+        _moveSpeed = moveSpeed;
         _damage = damage;
         _pool = pool;
         _owner = owner;
+
+        CPrint.Log($"총알 초기화 - Owner : {_owner}, 방향 : {transform.forward}");
     }
 
     private void Update()
@@ -46,12 +54,22 @@ public class Bullet : MonoBehaviour
 
         float moveDistance = _moveSpeed * Time.deltaTime;
 
-        LayerMask targetLayer = _owner == BulletOwner.Player ? _enemyLayer : _playerLayer;
+        LayerMask targetLayer =
+            _owner == BulletOwner.Player ? _enemyLayer | _coverLayer : _playerLayer | _coverLayer;
 
         if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit, moveDistance, targetLayer, QueryTriggerInteraction.Collide))
         {
             CPrint.Log($"충돌 오브젝트: {hit.collider.gameObject.name}");
-            
+
+            int hitLayer = 1 << hit.collider.gameObject.layer;
+
+            if ((_coverLayer & hitLayer) != 0)
+            {
+                CPrint.Log("Cover에 총알 충돌");
+                ReturnToPool();
+                return;
+            }
+
             if (_owner == BulletOwner.Player)
             {
                 HitEnemy(hit);
@@ -101,7 +119,7 @@ public class Bullet : MonoBehaviour
 
         if (health == null)
         {
-            CPrint.Log($"Enemy 총알이 맞춘 대상에 Health 없음: {hit.collider.name}"); // 임시 추가
+            CPrint.Log($"Enemy 총알이 맞춘 대상에 Health 없음: {hit.collider.name}");
             return;
         }
 
@@ -113,5 +131,22 @@ public class Bullet : MonoBehaviour
     private void ReturnToPool()
     {
         _pool.Return(this);
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (!_showDirectionGizmos)
+        {
+            return;
+        }
+
+        if (!gameObject.activeSelf)
+        {
+            return;
+        }
+
+        Gizmos.DrawLine(transform.position, transform.position + transform.forward * _gizmosLength);
+
+        Gizmos.DrawSphere(transform.position + transform.forward * _gizmosLength, 0.05f);
     }
 }
