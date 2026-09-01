@@ -43,6 +43,8 @@ public class PlayerController : MonoBehaviour
 
     private float _animationDamp = 0.1f;
     private float _verticalVelocity;
+    private float _baseMoveSpeed;
+    private float _moveSpeedMultiplier = 1f;
 
     private int _hashSpeed;
     private int _hashRunning;
@@ -68,12 +70,19 @@ public class PlayerController : MonoBehaviour
     private Vector3 _moveVelocity;
     #endregion
 
+    #region 프로퍼티
     public Weapon CurrentWeapon => _weapons[_currentWeaponIndex];
+    public IReadOnlyList<Weapon> Weapons => _weapons;
+    #endregion
 
+    #region 이벤트
     public event System.Action WeaponChanged;
+    #endregion
 
     private void Awake()
     {
+        _baseMoveSpeed = _moveSpeed;
+
         _characterController = GetComponent<CharacterController>();
         _health = GetComponent<Health>();
 
@@ -382,5 +391,13 @@ public class PlayerController : MonoBehaviour
         _animator.SetBool(_hashAiming, false);
         _animator.SetBool(_hashRunning, false);
         _animator.SetTrigger(_hashDeath);
+    }
+
+    public void SetMoveSpeedMultiplier(float multiplier)
+    {
+        _moveSpeedMultiplier = multiplier;
+        _moveSpeed = _baseMoveSpeed * _moveSpeedMultiplier;
+
+        CPrint.Log($"이동 속도 설정 : 기본 {_baseMoveSpeed} → 현재 {_moveSpeed}");
     }
 }

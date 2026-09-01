@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class BulletPool : MonoBehaviour
@@ -12,18 +11,26 @@ public class BulletPool : MonoBehaviour
 
     #region 내부 변수
     private List<Bullet> _bullets = new List<Bullet>();
+    private Transform _bulletContainer; 
     #endregion
 
     private void Awake()
     {
+        CreateContainer();
         CreatePool();
+    }
+
+    private void CreateContainer()
+    {
+        GameObject containerObj = new GameObject($"{gameObject.name}_BulletContainer");
+        _bulletContainer = containerObj.transform;
     }
 
     private void CreatePool()
     {
         for (int i = 0; i < _poolSize; i++)
         {
-            Bullet bullet = Instantiate(_bulletPrefab);
+            Bullet bullet = Instantiate(_bulletPrefab, _bulletContainer);
 
             bullet.gameObject.SetActive(false);
 
@@ -60,5 +67,4 @@ public class BulletPool : MonoBehaviour
 
         bullet.gameObject.SetActive(false);
     }
-
 }

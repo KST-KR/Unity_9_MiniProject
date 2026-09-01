@@ -14,9 +14,6 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private float _rangedEnemyRateIncrease = 0.05f;
     [SerializeField] private float _maxRangedEnemyRate = 0.5f;
 
-    [Header("웨이브 간격")]
-    [SerializeField] private float _waveInterval = 3f;
-
     [Header("적 체력")]
     [SerializeField] private float _startHealthMultiplier = 1f;
     [SerializeField] private float _healthMultiplierIncrease = 0.1f;
@@ -40,6 +37,7 @@ public class WaveManager : MonoBehaviour
 
     #region 이벤트
     public event System.Action<int> WaveChanged;
+    public event System.Action WaveEnded;
     #endregion
 
     private void Start()
@@ -47,7 +45,7 @@ public class WaveManager : MonoBehaviour
         StartNextWave();
     }
 
-    private void StartNextWave()
+    public void StartNextWave()
     {
         _currentWave++;
 
@@ -105,10 +103,7 @@ public class WaveManager : MonoBehaviour
 
         CPrint.Log($"===== Wave {_currentWave} 종료 =====");
 
-        // 다음 웨이브 시작 전 대기
-        yield return new WaitForSeconds(_waveInterval);
-
-        StartNextWave();
+        WaveEnded?.Invoke();
     }
 
     private float GetHealthMultiplier()

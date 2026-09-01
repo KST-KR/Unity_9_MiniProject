@@ -52,6 +52,12 @@ public class Weapon : MonoBehaviour
 
     private float _lastFireTime;
     private float _reloadEndTime;
+    private float _baseDamage;
+    private float _damageMultiplier = 1f;
+    private float _baseFireRate;
+    private float _fireRateMultiplier = 1f;
+    private int _baseMagazineSize;
+    private int _magazineBonus;
 
     private bool _isReloading;
     private bool _isCrouching;
@@ -77,6 +83,10 @@ public class Weapon : MonoBehaviour
 
     private void Awake()
     {
+        _baseDamage = _damage;
+        _baseFireRate = _fireRate;
+        _baseMagazineSize = _magazineSize;
+
         _currentAmmo = _magazineSize;
 
         _initialLocalRotation = _weaponModel.localRotation;
@@ -182,6 +192,35 @@ public class Weapon : MonoBehaviour
     public void SetCrouching(bool isCrouching)
     {
         _isCrouching = isCrouching;
+    }
+
+    public void SetDamageMultiplier(float multiplier)
+    {
+        _damageMultiplier = multiplier;
+        _damage = _baseDamage * _damageMultiplier;
+
+        CPrint.Log($"무기 공격력 설정 : 기본 {_baseDamage} → 현재 {_damage}");
+    }
+
+    public void SetFireRateMultiplier(float multiplier)
+    {
+        _fireRateMultiplier = multiplier;
+        _fireRate = _baseFireRate / _fireRateMultiplier;
+
+        CPrint.Log($"연사속도 설정 : 기본 {_baseFireRate} → 현재 {_fireRate}");
+    }
+
+    public void SetMagazineBonus(int bonus)
+    {
+        _magazineBonus = bonus;
+        _magazineSize = _baseMagazineSize + _magazineBonus;
+
+        _currentAmmo = _magazineSize;
+
+        AmmoChanged?.Invoke(_currentAmmo, _magazineSize);
+
+        CPrint.Log(
+            $"탄창 크기 설정 : 기본 {_baseMagazineSize} → 현재 {_magazineSize}");
     }
 
     private void UpdateReload()
