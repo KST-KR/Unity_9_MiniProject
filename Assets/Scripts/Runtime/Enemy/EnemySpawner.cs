@@ -28,6 +28,10 @@ public class EnemySpawner : MonoBehaviour
 
     [Header("적 공격력")]
     [SerializeField] private float _damageMultiplier = 1f;
+
+    [Header("재화")]
+    [SerializeField] private CurrencyManager _currencyManager;
+    [SerializeField] private int _enemyReward = 10;
     #endregion
 
     #region 내부 변수
@@ -248,6 +252,11 @@ public class EnemySpawner : MonoBehaviour
         }
 
         _spawnedEnemies.Remove(enemy);
+
+        if (_currencyManager != null)
+        {
+            _currencyManager.AddCurrency(_enemyReward);
+        }
 
         CPrint.Log($"적 사망 : {enemy.name}");
         CPrint.Log($"남은 적 : {_spawnedEnemies.Count}");

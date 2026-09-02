@@ -13,7 +13,7 @@ public class UpgradeManager : MonoBehaviour
     [SerializeField] private List<Ability> _abilities;
 
     [Header("UI")]
-    [SerializeField] private DiceUI _diceUI;
+    [SerializeField] private AbilityUpgradeUI _abilityUpgradeUI;
     #endregion
 
     #region 내부 변수
@@ -23,6 +23,7 @@ public class UpgradeManager : MonoBehaviour
 
     #region 프로퍼티
     public int DiceResult => _diceResult;
+
     public IReadOnlyList<Ability> CurrentChoices => _currentChoices;
     #endregion
 
@@ -32,21 +33,21 @@ public class UpgradeManager : MonoBehaviour
 
     public void StartUpgrade()
     {
-        _diceUI.Show();
+        _abilityUpgradeUI.Show();
 
         CPrint.Log("업그레이드 시작");
     }
 
     public void RollDice()
     {
-        _diceResult = _diceManager.RollD4();
+        _diceResult = _diceManager.RollAllDice();
 
         CreateAbilityChoices();
 
-        _diceUI.ShowDiceResult(_diceResult);
-        _diceUI.ShowAbilities(_currentChoices);
+        _abilityUpgradeUI.ShowDiceResult(_diceResult);
+        _abilityUpgradeUI.ShowAbilities(_currentChoices);
 
-        CPrint.Log($"업그레이드 시작 - 주사위 결과 : {_diceResult}");
+        CPrint.Log($"업그레이드 시작 - 주사위 전체 합계 : {_diceResult}");
     }
 
     private void CreateAbilityChoices()
@@ -79,10 +80,10 @@ public class UpgradeManager : MonoBehaviour
 
         _abilityManager.ApplyAbility(ability, _diceResult);
 
-        CPrint.Log($"어빌리티 선택 : {ability.AbilityName}," + $"증가량 : {_diceResult}");
+        CPrint.Log($"어빌리티 선택 : {ability.AbilityName}, " + $"증가량 : {_diceResult}");
 
-        _diceUI.Hide();
+        _abilityUpgradeUI.Hide();
+
         UpgradeCompleted?.Invoke();
     }
-
 }
