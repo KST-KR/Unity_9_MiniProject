@@ -66,9 +66,20 @@ public class DiceSlotUI : MonoBehaviour
         // 범위 향상
         _rangeUpgradeNameText.text = "범위 향상";
 
-        _rangeUpgradeCountText.text = $"가능 횟수 : {diceManager.MinValueUpgradeCount}";
+        bool canIncreaseMinValue =
+            dice.CanIncreaseMinValue() &&
+            diceManager.MinValueUpgradeCount > 0;
 
-        _rangeUpgradeButton.interactable = dice.CanIncreaseMinValue() && diceManager.MinValueUpgradeCount > 0;
+        if (!dice.CanIncreaseMinValue())
+        {
+            _rangeUpgradeCountText.text = "최대 강화";
+        }
+        else
+        {
+            _rangeUpgradeCountText.text = $"가능 횟수 : {diceManager.MinValueUpgradeCount}";
+        }
+
+        _rangeUpgradeButton.interactable = canIncreaseMinValue;
     }
 
     private void UpdateDiceImage(Dice dice, Sprite[] d4Sprites, Sprite[] d6Sprites)

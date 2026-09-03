@@ -11,7 +11,8 @@ public class EnemyController : MonoBehaviour
 
     [Header("공격")]
     [SerializeField] private float _attackDamage = 10f;
-    [SerializeField] private float _attackHitTime = 0.5f;
+    [SerializeField] private float _attackHitTime = 1f;
+    [SerializeField] private float _attackDuration = 3f;
 
     [Header("피격")]
     [SerializeField] private float _hitDuration = 0.5f;
@@ -41,6 +42,7 @@ public class EnemyController : MonoBehaviour
 
     private float _nextAttackTime;
     private float _attackEndTime;
+    private float _attackDurationEndTime;
     private float _hitEndTime;
     private float _deathEndTime;
     private float _baseAttackDamage;
@@ -145,6 +147,11 @@ public class EnemyController : MonoBehaviour
             _hasAttackHit = true;
             AttackTarget();
         }
+
+        if (Time.time >= _attackDurationEndTime)
+        {
+            _isAttacking = false;
+        }
     }
 
     private void UpdateCombat()
@@ -196,6 +203,8 @@ public class EnemyController : MonoBehaviour
         }
 
         _agent.isStopped = true;
+        _agent.ResetPath();
+        _agent.velocity = Vector3.zero;
 
         _animator.SetFloat(_hashSpeed, 0f);
     }
@@ -220,7 +229,9 @@ public class EnemyController : MonoBehaviour
 
         _isAttacking = true;
         _hasAttackHit = false;
+
         _attackEndTime = Time.time + _attackHitTime;
+        _attackDurationEndTime = Time.time + _attackDuration;
 
         CPrint.Log("근거리 적 Attack 애니메이션 실행");
 
@@ -231,7 +242,6 @@ public class EnemyController : MonoBehaviour
     {
         if (_target == null)
         {
-            _isAttacking = false;
             return;
         }
 
@@ -240,7 +250,6 @@ public class EnemyController : MonoBehaviour
 
         if (targetDir.magnitude > _attackDistance)
         {
-            _isAttacking = false;
             return;
         }
 
@@ -252,8 +261,6 @@ public class EnemyController : MonoBehaviour
 
             targetHealth.TakeDamage(_currentAttackDamage);
         }
-
-        _isAttacking = false;
     }
 
     private void OnHit()

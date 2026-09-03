@@ -23,6 +23,7 @@ public class Health : MonoBehaviour
     #region 이벤트
     public event System.Action Hit;
     public event System.Action Died;
+    public event System.Action HealthChanged;
     #endregion
 
     protected virtual void Awake()
@@ -40,6 +41,8 @@ public class Health : MonoBehaviour
         _currentHealth = _currentMaxHealth;
 
         CPrint.Log($"적 체력 설정 : 기본 {_baseMaxHealth} → 현재 {_currentMaxHealth}");
+
+        HealthChanged?.Invoke();
     }
 
     public virtual void TakeDamage(float damage)

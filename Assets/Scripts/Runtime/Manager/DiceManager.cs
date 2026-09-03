@@ -3,6 +3,10 @@ using UnityEngine;
 
 public class DiceManager : MonoBehaviour
 {
+    #region 싱글톤
+    public static DiceManager Instance { get; private set; }
+    #endregion
+
     #region 상수
     public const int MaxDiceCount = 5;
     #endregion
@@ -29,6 +33,14 @@ public class DiceManager : MonoBehaviour
 
     private void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+
         // 게임 시작 시 D4 하나 보유
         AddDice();
     }
@@ -185,6 +197,21 @@ public class DiceManager : MonoBehaviour
         _rerollCount += amount;
 
         CPrint.Log($"리롤 횟수 증가 : +{amount}, " + $"현재 {_rerollCount}");
+    }
+
+    public bool UseReroll()
+    {
+        if (_rerollCount <= 0)
+        {
+            CPrint.Log("리롤 횟수가 부족합니다.");
+            return false;
+        }
+
+        _rerollCount--;
+
+        CPrint.Log($"리롤 사용 : -1, " + $"남은 리롤 횟수 : {_rerollCount}");
+
+        return true;
     }
     #endregion
 

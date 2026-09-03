@@ -22,11 +22,6 @@ public class DiceUpgradeUI : MonoBehaviour
 
     private void Awake()
     {
-        if (_diceManager == null)
-        {
-            _diceManager = FindFirstObjectByType<DiceManager>();
-        }
-
         for (int i = 0; i < _diceSlots.Length; i++)
         {
             if (_diceSlots[i] == null)
@@ -41,6 +36,11 @@ public class DiceUpgradeUI : MonoBehaviour
         {
             _backButton.onClick.AddListener(Close);
         }
+    }
+
+    private void Start()
+    {
+        _diceManager = DiceManager.Instance;
     }
 
     private void OnDestroy()

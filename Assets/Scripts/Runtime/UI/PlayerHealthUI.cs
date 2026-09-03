@@ -22,6 +22,7 @@ public class PlayerHealthUI : MonoBehaviour
 
         _health.Hit += UpdateHealthUI;
         _health.Died += UpdateHealthUI;
+        _health.HealthChanged += UpdateHealthUI;
 
         UpdateHealthUI();
     }
@@ -35,6 +36,7 @@ public class PlayerHealthUI : MonoBehaviour
 
         _health.Hit -= UpdateHealthUI;
         _health.Died -= UpdateHealthUI;
+        _health.HealthChanged -= UpdateHealthUI;
     }
 
     private void UpdateHealthUI()

@@ -4,6 +4,10 @@ using UnityEngine;
 
 public class CurrencyManager : MonoBehaviour
 {
+    #region 싱글톤
+    public static CurrencyManager Instance { get; private set; }
+    #endregion
+
     #region 인스펙터
     [Header("재화")]
     [SerializeField] private int _startCurrency = 0;
@@ -23,9 +27,18 @@ public class CurrencyManager : MonoBehaviour
 
     private void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+
         _currentCurrency = _startCurrency;
     }
 
+    #region 재화 획득
     public void AddCurrency(int amount)
     {
         if (amount <= 0)
@@ -39,7 +52,9 @@ public class CurrencyManager : MonoBehaviour
 
         CurrencyChanged?.Invoke(_currentCurrency);
     }
+    #endregion
 
+    #region 재화 사용
     public bool TrySpendCurrency(int amount)
     {
         if (amount <= 0)
@@ -61,4 +76,5 @@ public class CurrencyManager : MonoBehaviour
 
         return true;
     }
+    #endregion
 }

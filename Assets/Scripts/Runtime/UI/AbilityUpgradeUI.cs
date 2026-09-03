@@ -22,6 +22,10 @@ public class AbilityUpgradeUI : MonoBehaviour
     [SerializeField] private TMP_Text _diceResultText;
     [SerializeField] private Button _rollButton;
 
+    [Header("리롤")]
+    [SerializeField] private TMP_Text _rerollCountText;
+    [SerializeField] private Button _rerollButton;
+
     [Header("업그레이드")]
     [SerializeField] private GameObject _upgradePanel;
     [SerializeField] private Button[] _abilityButtons;
@@ -33,19 +37,18 @@ public class AbilityUpgradeUI : MonoBehaviour
 
     [Header("패널")]
     [SerializeField] private GameObject _waveEndPanel;
+
+    [Header("웨이브")]
+    [SerializeField] private WaveManager _waveManager;
     #endregion
 
     #region 내부 변수
     private bool _isRolling;
+    private bool _hasRolled;
     #endregion
 
     private void Awake()
     {
-        if (_diceManager == null)
-        {
-            _diceManager = FindFirstObjectByType<DiceManager>();
-        }
-
         for (int i = 0; i < _abilityButtons.Length; i++)
         {
             int index = i;
@@ -58,9 +61,27 @@ public class AbilityUpgradeUI : MonoBehaviour
 
         _rollButton.onClick.AddListener(OnRollButtonClicked);
 
+        if (_rerollButton != null)
+        {
+            CPrint.Log("리롤 버튼 이벤트 등록");
+
+            _rerollButton.onClick.AddListener(OnRerollButtonClicked);
+        }
+
         if (_backButton != null)
         {
             _backButton.onClick.AddListener(Close);
+        }
+    }
+
+    private void Start()
+    {
+        _diceManager = DiceManager.Instance;
+        _waveManager = WaveManager.Instance;
+
+        if (_waveManager != null)
+        {
+            _waveManager.WaveChanged += ResetUpgrade;
         }
     }
 
@@ -75,14 +96,35 @@ public class AbilityUpgradeUI : MonoBehaviour
     {
         gameObject.SetActive(true);
 
-        _upgradePanel.SetActive(false);
+        if (!_hasRolled)
+        {
+            _upgradePanel.SetActive(false);
 
-        _rollButton.gameObject.SetActive(true);
-        _rollButton.interactable = true;
+            _rollButton.gameObject.SetActive(true);
+            _rollButton.interactable = true;
 
-        _diceResultText.text = "주사위 : ?";
+            _diceResultText.text = "주사위 : ?";
 
-        ShowDiceSlots();
+            ShowDiceSlots();
+        }
+        else
+        {
+            _upgradePanel.SetActive(true);
+
+            _rollButton.gameObject.SetActive(true);
+            _rollButton.interactable = false;
+
+            ShowDiceSlots();
+        }
+
+        if (_rerollCountText != null && _diceManager != null)
+        {
+            _rerollCountText.text = $"남은 리롤 : {_diceManager.RerollCount}";
+        }
+
+        _isRolling = false;
+
+        UpdateRerollUI();
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -155,7 +197,10 @@ public class AbilityUpgradeUI : MonoBehaviour
         // 실제 결과 표시
         ShowDiceSlots();
 
+        _hasRolled = true;
         _isRolling = false;
+
+        UpdateRerollUI();
     }
 
     private void ShowRandomDiceResults()
@@ -192,6 +237,54 @@ public class AbilityUpgradeUI : MonoBehaviour
     {
         _diceResultText.text = $"총 결과 : {result}";
     }
+
+    private void UpdateRerollUI()
+    {
+        if (_diceManager == null)
+        {
+            return;
+        }
+
+        if (_rerollCountText != null)
+        {
+            _rerollCountText.text = $"남은 리롤 : {_diceManager.RerollCount}";
+        }
+
+        if (_rerollButton != null)
+        {
+            _rerollButton.interactable = _diceManager.RerollCount > 0 && _hasRolled && !_isRolling;
+        }
+    }
+
+    private void OnRerollButtonClicked()
+    {
+        CPrint.Log($"OnRerollButtonClicked 진입, _isRolling = {_isRolling}");
+
+        if (_isRolling)
+        {
+            return;
+        }
+
+        CPrint.Log($"리롤 버튼 클릭 전 : {_diceManager.RerollCount}");
+
+        if (!_diceManager.UseReroll())
+        {
+            return;
+        }
+
+        CPrint.Log($"리롤 버튼 클릭 후 : {_diceManager.RerollCount}");
+
+        UpdateRerollUI();
+
+        StartCoroutine(RollDiceRoutine());
+    }
+
+    private void ResetUpgrade(int wave)
+    {
+        _hasRolled = false;
+
+        CPrint.Log($"Wave {wave} 시작 → 어빌리티 강화 상태 초기화");
+    }
     #endregion
 
     #region 어빌리티
@@ -217,6 +310,16 @@ public class AbilityUpgradeUI : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (_waveManager != null)
+        {
+            _waveManager.WaveChanged -= ResetUpgrade;
+        }
+
+        if (_rerollButton != null)
+        {
+            _rerollButton.onClick.RemoveListener(OnRerollButtonClicked);
+        }
+
         if (_backButton != null)
         {
             _backButton.onClick.RemoveListener(Close);

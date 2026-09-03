@@ -40,6 +40,8 @@ public class WaveEndUI : MonoBehaviour
 
     private void Start()
     {
+        _currencyManager = CurrencyManager.Instance;
+
         _waveManager.WaveEnded += Show;
         _upgradeManager.UpgradeCompleted += OnUpgradeCompleted;
 

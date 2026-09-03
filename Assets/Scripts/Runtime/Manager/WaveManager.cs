@@ -3,6 +3,10 @@ using UnityEngine;
 
 public class WaveManager : MonoBehaviour
 {
+    #region 싱글톤
+    public static WaveManager Instance { get; private set; }
+    #endregion
+
     #region 인스펙터
     [Header("웨이브")]
     [SerializeField] private EnemySpawner _enemySpawner;
@@ -39,6 +43,17 @@ public class WaveManager : MonoBehaviour
     public event System.Action<int> WaveChanged;
     public event System.Action WaveEnded;
     #endregion
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+    }
 
     private void Start()
     {

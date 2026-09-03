@@ -31,6 +31,11 @@ public class UpgradeManager : MonoBehaviour
     public event System.Action UpgradeCompleted;
     #endregion
 
+    private void Start()
+    {
+        _diceManager = DiceManager.Instance;
+    }
+
     public void StartUpgrade()
     {
         _abilityUpgradeUI.Show();

@@ -17,6 +17,7 @@ public class ShopItem : ScriptableObject
     [SerializeField] private string _description;
     [SerializeField] private Sprite _icon;
     [SerializeField] private int _price;
+    [SerializeField] private int _priceIncrease;
 
     [Header("효과")]
     [SerializeField] private ShopItemType _type;
@@ -28,6 +29,7 @@ public class ShopItem : ScriptableObject
     public string Description => _description;
     public Sprite Icon => _icon;
     public int Price => _price;
+    public int PriceIncrease => _priceIncrease;
     public ShopItemType Type => _type;
     public int Value => _value;
     #endregion

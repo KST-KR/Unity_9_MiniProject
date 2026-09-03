@@ -25,30 +25,18 @@ public class ShopManager : MonoBehaviour
     [SerializeField] private TMP_Text[] _itemDescriptionTexts;
     [SerializeField] private TMP_Text[] _itemPriceTexts;
     [SerializeField] private Button[] _buyButtons;
+    [SerializeField] private TMP_Text[] _buyButtonTexts;
     #endregion
 
     #region 내부 변수
     private bool[] _isPurchased;
+    private int[] _purchaseCounts;
     #endregion
 
     private void Awake()
     {
-        if (_currencyManager == null)
-        {
-            _currencyManager = FindFirstObjectByType<CurrencyManager>();
-        }
-
-        if (_diceManager == null)
-        {
-            _diceManager = FindFirstObjectByType<DiceManager>();
-        }
-
-        if (_waveManager == null)
-        {
-            _waveManager = FindFirstObjectByType<WaveManager>();
-        }
-
         _isPurchased = new bool[_shopItems.Length];
+        _purchaseCounts = new int[_shopItems.Length];
 
         for (int i = 0; i < _buyButtons.Length; i++)
         {
@@ -59,32 +47,25 @@ public class ShopManager : MonoBehaviour
                 BuyItem(index);
             });
         }
+    }
+
+    private void Start()
+    {
+        _diceManager = DiceManager.Instance;
+        _currencyManager = CurrencyManager.Instance;
+        _waveManager = WaveManager.Instance;
 
         if (_waveManager != null)
         {
             _waveManager.WaveChanged += ResetShop;
         }
-    }
 
-    private void OnEnable()
-    {
         if (_currencyManager != null)
         {
             _currencyManager.CurrencyChanged += UpdateCurrencyText;
             UpdateCurrencyText(_currencyManager.CurrentCurrency);
         }
-    }
 
-    private void OnDisable()
-    {
-        if (_currencyManager != null)
-        {
-            _currencyManager.CurrencyChanged -= UpdateCurrencyText;
-        }
-    }
-
-    private void Start()
-    {
         SetupShop();
 
         if (_waveManager != null)
@@ -99,11 +80,17 @@ public class ShopManager : MonoBehaviour
         {
             _waveManager.WaveChanged -= ResetShop;
         }
+
+        if (_currencyManager != null)
+        {
+            _currencyManager.CurrencyChanged -= UpdateCurrencyText;
+        }
     }
 
+    #region 상점 설정
     private void SetupShop()
     {
-        for (int i = 0; i < _shopItems.Length; i++)
+        for (int i = 0; i < _buyButtons.Length && i < _shopItems.Length; i++)
         {
             if (i >= _itemIcons.Length ||
                 i >= _itemNameTexts.Length ||
@@ -124,12 +111,13 @@ public class ShopManager : MonoBehaviour
             _itemIcons[i].sprite = item.Icon;
             _itemNameTexts[i].text = item.ItemName;
             _itemDescriptionTexts[i].text = item.Description;
-            _itemPriceTexts[i].text = $"{item.Price}";
 
-            _buyButtons[i].interactable = true;
+            UpdateItemPriceText(i);
         }
     }
+    #endregion
 
+    #region 구매
     private void BuyItem(int index)
     {
         if (index < 0 || index >= _shopItems.Length)
@@ -139,9 +127,7 @@ public class ShopManager : MonoBehaviour
 
         if (_isPurchased[index])
         {
-            CPrint.Log(
-                $"이번 웨이브에 이미 구매한 상품 : " +
-                $"{_shopItems[index].ItemName}");
+            CPrint.Log($"이번 웨이브에 이미 구매한 상품 : " + $"{_shopItems[index].ItemName}");
 
             return;
         }
@@ -164,7 +150,9 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
-        bool spent = _currencyManager.TrySpendCurrency(item.Price);
+        int currentPrice = GetCurrentPrice(index);
+
+        bool spent = _currencyManager.TrySpendCurrency(currentPrice);
 
         if (!spent)
         {
@@ -175,24 +163,58 @@ public class ShopManager : MonoBehaviour
         ApplyItem(item);
 
         _isPurchased[index] = true;
-        _buyButtons[index].interactable = false;
+        _purchaseCounts[index]++;
 
-        CPrint.Log($"상품 구매 완료 : {item.ItemName}");
+        // 구매 후 다음 가격 표시
+        UpdateItemPriceText(index);
+
+        UpdateAllBuyButtonStates();
+
+        CPrint.Log($"상품 구매 완료 : {item.ItemName}, " + $"구매 가격 : {currentPrice}, " + $"다음 가격 : {GetCurrentPrice(index)}");
+    }
+    #endregion
+
+    #region 가격
+    private int GetCurrentPrice(int index)
+    {
+        ShopItem item = _shopItems[index];
+
+        return item.Price + (item.PriceIncrease * _purchaseCounts[index]);
     }
 
+    private void UpdateItemPriceText(int index)
+    {
+        if (index < 0 || index >= _shopItems.Length || index >= _itemPriceTexts.Length)
+        {
+            return;
+        }
+
+        ShopItem item = _shopItems[index];
+
+        if (item == null)
+        {
+            return;
+        }
+
+        int price = GetCurrentPrice(index);
+
+        _itemPriceTexts[index].text = $"{price}";
+    }
+    #endregion
+
+    #region 구매 가능 여부
     private bool CanPurchase(ShopItem item)
     {
         switch (item.Type)
         {
             case ShopItemType.DiceCount:
-                return _diceManager.DiceCount + item.Value
-                    <= DiceManager.MaxDiceCount;
+                return !IsDiceCountMax();
 
             case ShopItemType.DiceType:
-                return true;
+                return !IsDiceTypeMax();
 
             case ShopItemType.DiceMinValue:
-                return true;
+                return !IsDiceMinValueMax();
 
             case ShopItemType.RerollCount:
                 return true;
@@ -201,7 +223,9 @@ public class ShopManager : MonoBehaviour
                 return false;
         }
     }
+    #endregion
 
+    #region 상품 적용
     private void ApplyItem(ShopItem item)
     {
         switch (item.Type)
@@ -226,7 +250,9 @@ public class ShopManager : MonoBehaviour
                 break;
         }
     }
+    #endregion
 
+    #region 웨이브
     private void ResetShop(int wave)
     {
         for (int i = 0; i < _isPurchased.Length; i++)
@@ -234,14 +260,18 @@ public class ShopManager : MonoBehaviour
             _isPurchased[i] = false;
         }
 
-        for (int i = 0; i < _buyButtons.Length; i++)
+        for (int i = 0; i < _shopItems.Length; i++)
         {
-            _buyButtons[i].interactable = true;
+            UpdateItemPriceText(i);
         }
+
+        UpdateAllBuyButtonStates();
 
         CPrint.Log($"Wave {wave} 시작 → 상점 구매 상태 초기화");
     }
+    #endregion
 
+    #region 재화
     private void UpdateCurrencyText(int currency)
     {
         if (_currencyText == null)
@@ -251,4 +281,108 @@ public class ShopManager : MonoBehaviour
 
         _currencyText.text = $"재화 : {currency}";
     }
+    #endregion
+
+    #region 구매 상태
+    private bool IsDiceCountMax()
+    {
+        return _diceManager.DiceCount >= DiceManager.MaxDiceCount;
+    }
+
+    private bool IsDiceTypeMax()
+    {
+        if (_diceManager.DiceCount < DiceManager.MaxDiceCount)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < _diceManager.Dices.Count; i++)
+        {
+            if (_diceManager.Dices[i].CanUpgradeDiceType())
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool IsDiceMinValueMax()
+    {
+        if (_diceManager.DiceCount == 0)
+        {
+            return true;
+        }
+
+        for (int i = 0; i < _diceManager.Dices.Count; i++)
+        {
+            if (_diceManager.Dices[i].CanIncreaseMinValue())
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void UpdateBuyButtonState(int index)
+    {
+        if (index < 0 || 
+            index >= _shopItems.Length || 
+            index >= _buyButtons.Length || 
+            index >= _buyButtonTexts.Length)
+        {
+            return;
+        }
+
+        ShopItem item = _shopItems[index];
+
+        if (item == null)
+        {
+            return;
+        }
+
+        bool isMax = false;
+
+        switch (item.Type)
+        {
+            case ShopItemType.DiceCount:
+                isMax = IsDiceCountMax();
+                break;
+
+            case ShopItemType.DiceType:
+                isMax = IsDiceTypeMax();
+                break;
+
+            case ShopItemType.DiceMinValue:
+                isMax = IsDiceMinValueMax();
+                break;
+        }
+
+        if (isMax)
+        {
+            _buyButtons[index].interactable = false;
+            _buyButtonTexts[index].text = "최대 개수";
+            return;
+        }
+
+        if (_isPurchased[index])
+        {
+            _buyButtons[index].interactable = false;
+            _buyButtonTexts[index].text = "구매 완료";
+            return;
+        }
+
+        _buyButtons[index].interactable = true;
+        _buyButtonTexts[index].text = "구매";
+    }
+
+    private void UpdateAllBuyButtonStates()
+    {
+        for (int i = 0; i < _buyButtons.Length && i < _shopItems.Length; i++)
+        {
+            UpdateBuyButtonState(i);
+        }
+    }
+    #endregion
 }
