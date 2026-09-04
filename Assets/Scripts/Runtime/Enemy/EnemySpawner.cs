@@ -31,7 +31,8 @@ public class EnemySpawner : MonoBehaviour
 
     [Header("재화")]
     [SerializeField] private CurrencyManager _currencyManager;
-    [SerializeField] private int _enemyReward = 10;
+    [SerializeField] private int _minEnemyReward = 10;
+    [SerializeField] private int _maxEnemyReward = 20;
     #endregion
 
     #region 내부 변수
@@ -255,7 +256,15 @@ public class EnemySpawner : MonoBehaviour
 
         if (_currencyManager != null)
         {
-            _currencyManager.AddCurrency(_enemyReward);
+            int reward = Random.Range(_minEnemyReward, _maxEnemyReward + 1);
+            _currencyManager.AddCurrency(reward);
+
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.RecordKill(reward);
+            }
+
+            CPrint.Log($"적 처치 보상 : {reward}");
         }
 
         CPrint.Log($"적 사망 : {enemy.name}");

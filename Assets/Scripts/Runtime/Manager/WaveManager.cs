@@ -53,10 +53,14 @@ public class WaveManager : MonoBehaviour
         }
 
         Instance = this;
+
+        CPrint.Log("WaveManager Awake 실행");
     }
 
     private void Start()
     {
+        CPrint.Log("WaveManager Start 실행");
+
         StartNextWave();
     }
 

@@ -391,6 +391,13 @@ public class PlayerController : MonoBehaviour
         _animator.SetBool(_hashAiming, false);
         _animator.SetBool(_hashRunning, false);
         _animator.SetTrigger(_hashDeath);
+
+        _cameraController.StartDeathCamera();
+
+        if(GameManager.Instance != null)
+        {
+            GameManager.Instance.GameOver();
+        }
     }
 
     public void SetMoveSpeedMultiplier(float multiplier)
